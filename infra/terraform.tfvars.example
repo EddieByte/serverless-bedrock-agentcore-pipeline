@@ -1,4 +1,4 @@
-aws_region         = "us-east-1"
+aws_region         = "us-east-2"
 environment        = "dev"
 bucket_prefix      = "serverless-agentcore-analysis"
 bedrock_model_id   = "us.anthropic.claude-sonnet-4-20250514-v1:0"
