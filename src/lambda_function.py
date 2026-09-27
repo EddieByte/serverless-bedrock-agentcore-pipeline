@@ -21,49 +21,46 @@ def lambda_handler(event, context):
         object_key = urllib.parse.unquote_plus(record['object']['key'], encoding='utf-8')
 
         output_bucket = os.environ.get('OUTPUT_BUCKET')
-        model_id = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-5-sonnet-20240620-v1:0')
+        model_id = os.environ.get('BEDROCK_MODEL_ID', 'us.amazon.nova-pro-v1:0')
 
         logger.info(
             f"Processing object '{object_key}' from bucket '{source_bucket}'. "
             f"Target output: '{output_bucket}'."
         )
 
-        # 1. Fetch object snippet or data metadata from S3
+        # 1. Fetch object snippet from S3
         response = s3_client.get_object(Bucket=source_bucket, Key=object_key)
         file_content_sample = response['Body'].read(2048).decode('utf-8', errors='ignore')
 
-        # 2. Construct Bedrock prompt for analysis
-        prompt = f"""
-Human: You are an expert data analyst AI agent. Analyze the following uploaded dataset sample from file '{object_key}':
-
-{file_content_sample}
-
-Provide:
-1. Data schema overview and summary statistics.
-2. Key business anomalies, trends, or insights.
-3. Recommended data transformations or visualization plots.
-
-A:
-"""
-
-        # 3. Invoke Amazon Bedrock model
-        payload = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 2048,
-            "messages": [{"role": "user", "content": prompt}]
-        }
-
-        bedrock_response = bedrock_runtime.invoke_model(
-            modelId=model_id,
-            contentType="application/json",
-            accept="application/json",
-            body=json.dumps(payload)
+        # 2. Construct analysis prompt
+        prompt = (
+            f"You are an expert data analyst. Analyze the following uploaded dataset "
+            f"sample from file '{object_key}':\n\n"
+            f"{file_content_sample}\n\n"
+            f"Provide:\n"
+            f"1. Data schema overview and summary statistics.\n"
+            f"2. Key business anomalies, trends, or insights.\n"
+            f"3. Recommended data transformations or visualization plots."
         )
 
-        response_body = json.loads(bedrock_response.get('body').read())
-        analysis_result = response_body['content'][0]['text']
+        # 3. Invoke Amazon Nova via the Converse API (works across all Nova models)
+        converse_response = bedrock_runtime.converse(
+            modelId=model_id,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"text": prompt}]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": 2048,
+                "temperature": 0.3
+            }
+        )
 
-        # 4. Save structured report to S3 Output Bucket
+        analysis_result = converse_response["output"]["message"]["content"][0]["text"]
+
+        # 4. Save report to S3 output bucket
         output_key = f"reports/analysis_{os.path.basename(object_key)}.md"
         s3_client.put_object(
             Bucket=output_bucket,
@@ -73,7 +70,8 @@ A:
         )
 
         logger.info(
-            f"Analysis complete. Report successfully saved to s3://{output_bucket}/{output_key}"
+            f"Analysis complete. Report successfully saved to "
+            f"s3://{output_bucket}/{output_key}"
         )
 
         return {

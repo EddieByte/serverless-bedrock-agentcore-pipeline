@@ -19,7 +19,7 @@ variable "bucket_prefix" {
 variable "bedrock_model_id" {
   type        = string
   description = "The Bedrock model ID used by the orchestrator."
-  default     = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+  default     = "us.amazon.nova-pro-v1:0"
 }
 
 variable "lambda_timeout" {
