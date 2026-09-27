@@ -1,0 +1,30 @@
+# =============================================================================
+# TERRAFORM — never commit these from the infra/ directory
+# =============================================================================
+
+# Real variable values — may contain sensitive config
+terraform.tfvars
+*.auto.tfvars
+
+# State files — contain all provisioned resource details, ARNs, and outputs
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.terraform.tfstate
+
+  
+
+# Terraform working directory — downloaded providers and modules
+.terraform/
+.terraform.lock.hcl
+
+# Generated Lambda deployment package
+lambda_payload.zip
+*.zip
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Local test files
+test_data.csv
